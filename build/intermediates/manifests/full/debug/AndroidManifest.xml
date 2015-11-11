@@ -5,10 +5,10 @@
     android:versionName="1.0" >
 
     <application
-        android:icon="@drawable/ic_launcher"
+        android:icon="@drawable/screen_icon"
         android:label="@string/app_name" >
         <activity
-            android:name="it.polimi.antlab.fastfading.Main"
+            android:name="it.polimi.antlab.fastfading.FastFadingActivity"
             android:label="@string/app_name" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -16,6 +16,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <service
+            android:name="it.polimi.antlab.fastfading.LogService"
+            android:exported="false" >
+        </service>
     </application>
 
 </manifest>
