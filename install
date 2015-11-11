@@ -1,0 +1,4 @@
+#!/bin/bash
+
+adb uninstall it.polimi.antlab.fastfading
+adb install build/outputs/apk/FastFading-debug.apk

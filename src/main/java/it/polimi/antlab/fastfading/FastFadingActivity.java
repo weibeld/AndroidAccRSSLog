@@ -7,11 +7,11 @@ import android.widget.ToggleButton;
 import android.widget.TextView;
 import android.widget.CompoundButton;
 import android.widget.CompoundButton.OnCheckedChangeListener;
+import android.content.Context;
 
 public class FastFadingActivity extends Activity {
 
   ToggleButton toggle;
-  TextView status;
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
@@ -20,20 +20,19 @@ public class FastFadingActivity extends Activity {
 
     // Set up toggle button
     toggle = (ToggleButton) findViewById(R.id.toggle);
-    status = (TextView) findViewById(R.id.status);
+    toggle.setChecked(LogService.running);
 
+    final Context context = this;
     toggle.setOnCheckedChangeListener(new OnCheckedChangeListener() {
+      Intent serviceIntent = new Intent(context, LogService.class);
       public void onCheckedChanged(CompoundButton button, boolean isChecked) {
-        if (isChecked) {
-          status.setText("On");
-        }
-        else {
-          status.setText("Off");
-        }
+        if (isChecked)
+          startService(serviceIntent);
+        else
+          stopService(serviceIntent);
       }
     });
 
   }
-
   
 }
