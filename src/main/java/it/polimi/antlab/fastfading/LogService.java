@@ -9,25 +9,61 @@ import android.app.NotificationManager;
 import android.content.Context;
 import android.graphics.Color;
 import android.app.TaskStackBuilder;
+import java.lang.Thread;
+import java.lang.Runnable;
+import android.os.Environment;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.FileNotFoundException;
+import java.lang.Exception;
 
 public class LogService extends Service {
-  public static boolean running = false;
+  public static boolean isRunning = false;
 
   final int NOTIFICATION_ID = 1;
-  NotificationManager nm;
+  private NotificationManager nm;
 
   @Override
   public int onStartCommand(Intent intent, int flags, int startId) {
-    running = true;
-    setupNofification();
-
-    // Start thread reading accelerometer and RSSI data every 10 ms
-
+    isRunning = true;
+    addNotification();
+    //file = new File(this.getFilesDir(), "test.csv");
+    // Start thread executing function logData()
+    final File file = new File(intent.getData().getPath());
+    Thread loggerThread = new Thread(new Runnable() {
+      public void run() {
+        logData(file);
+      }
+    });
+    loggerThread.start();
     return Service.START_STICKY;
   }
 
+  private void logData(File file) {
+    // Notes on saving files (Nexus 6):
+    // External storage: Environment.getExternalStorageDirectory()
+    //   --> /storage/emulated/0
+    // Internal storage: Context.getFilesDir()
+    //   --> /data/user/0/it.polimi.antlab.fastfading/files
+    // Save a file in internal storage and send it by email
+    writeToFile(file, "Hello world");
+  }
+
+  private void writeToFile(File file, String text) {
+    FileOutputStream out = null;
+    try {
+      out = new FileOutputStream(file);
+      out.write(text.getBytes());
+      out.close();
+    }
+    catch (Exception e) {
+      return;
+    }
+  }
+
   /* Setup notification in notification bar when service starts */
-  private void setupNotification() {
+  private void addNotification() {
     PendingIntent clickPendingIntent = createNotificationIndent();
     Notification n = new Notification.Builder(this)
         .setContentTitle("Fast Fading")
@@ -40,7 +76,6 @@ public class LogService extends Service {
     nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
     nm.notify(NOTIFICATION_ID, n);
   }
-
   /* Create PendingIntent to be issued when notification is clicked */
   private PendingIntent createNotificationIndent() {
     Intent clickIntent = new Intent(this, FastFadingActivity.class);
@@ -56,11 +91,12 @@ public class LogService extends Service {
   public IBinder onBind(Intent intent) {
     return null;
   }
-
+  
   @Override
   public void onDestroy() {
+    // Remove notification
     nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
     nm.cancel(NOTIFICATION_ID);
-    running = false;
+    isRunning = false;
   }
 }
