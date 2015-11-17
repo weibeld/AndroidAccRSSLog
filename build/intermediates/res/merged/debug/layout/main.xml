@@ -11,9 +11,11 @@
         />
     <TextView
         android:id="@+id/info"
-        android:layout_width="wrap_content"
+        android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         />
 </LinearLayout>
+
+<!-- android:background="@android:color/darker_gray" -->
 
 <!-- From: file:/Users/dw/Desktop/FastFading/src/main/res/layout/main.xml -->

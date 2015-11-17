@@ -18,61 +18,71 @@ import java.lang.Exception;
 import android.net.Uri;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.zip.ZipOutputStream;
+import java.util.zip.ZipEntry;
+import java.io.BufferedOutputStream;
+import java.io.FileInputStream;
+import java.io.BufferedInputStream;
+import android.app.AlertDialog;
+import org.apache.commons.io.FileUtils;
+import android.util.Log;
 
 public class FastFadingActivity extends Activity {
 
+  private static Context context;
+
   ToggleButton toggle;
+  TextView info;
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
+    // Set app-widely accessible context variable
+    context = this;
+    // Set layout
     setContentView(R.layout.main);
-    // Toggle Button for starting and stopping LogService
+    // Layout components
     toggle = (ToggleButton) findViewById(R.id.toggle);
+    info   = (TextView)     findViewById(R.id.info);
+    // Set up toggling actions of toggle button
     toggle.setChecked(LogService.isRunning);
-    final Context context = this;
     toggle.setOnCheckedChangeListener(new OnCheckedChangeListener() {
-      //File dataFile = new File(Environment.getExternalStorageDirectory(), "test.csv");
-      File dataFile = null; 
-      Intent serviceIntent = new Intent(context, LogService.class);
+      File csvFile = null;  // File for saving logged data
+      Intent serviceIntent = new Intent();
       public void onCheckedChanged(CompoundButton button, boolean isChecked) {
+        // Toggle button OFF -> ON
         if (isChecked) {
-          // TODO: remove all existing files in directory
-          String date = new SimpleDateFormat("yyyy-MM-dd_HHmmss").format(new Date());
-          dataFile = new File(getExternalCacheDir(), "FastFading_" + date + ".csv");
-          serviceIntent.setData(Uri.fromFile(dataFile));
+          // Directory where to save the generated CSV file
+          File dir = getExternalCacheDir();
+          // Remove all existing files in directory
+          Util.cleanDir(dir);
+          // Create empty CSV file
+          String csvFilename = dir.getAbsolutePath() + "/FastFading_" + Util.getDate() + ".csv";
+          csvFile = new File(csvFilename);
+          // Start service
+          serviceIntent.setClass(FastFadingActivity.getContext(), LogService.class);
+          serviceIntent.setData(Uri.fromFile(csvFile));
           startService(serviceIntent);
-        } 
+          // Add notification in notification bar
+          Util.startNotification();
+        }
+        // Toggle button ON -> OFF
         else {
           if (LogService.isRunning) {
-            stopService(serviceIntent);
-            // TODO: Zip file dataFile
-            sendEmail("daniel.weibel@unifr.ch", "Fast Fading File", "Your file", dataFile);
+            //try {
+              Util.cancelNotification();
+              stopService(serviceIntent);
+              try { info.setText(FileUtils.readFileToString(csvFile)); }
+              catch (Exception e) { Util.dispException(e); }
+              File zipFile = Util.createZip(csvFile);
+              Util.sendEmail("daniel.weibel@utilnifr.ch", "Fast Fading File", "Your file", zipFile);
           }
         }
       }
     });
   }
 
-  private void sendEmail(String to, String subject, String text, File file) {
-    Intent emailIntent = new Intent();
-    emailIntent.setAction(Intent.ACTION_SEND);
-    emailIntent.setType("text/csv");
-    emailIntent.putExtra(Intent.EXTRA_EMAIL,   new String[] {to});
-    emailIntent.putExtra(Intent.EXTRA_SUBJECT, subject);
-    emailIntent.putExtra(Intent.EXTRA_TEXT,    text);
-    emailIntent.putExtra(Intent.EXTRA_STREAM,  Uri.fromFile(file));
-    if (emailIntent.resolveActivity(getPackageManager()) != null) {
-        startActivity(Intent.createChooser(emailIntent, "Send data file by e-mail..."));
-    }
+  public static Context getContext() {
+    return context;
   }
-
-  public boolean isExternalStorageWritable() {
-    String state = Environment.getExternalStorageState();
-    if (Environment.MEDIA_MOUNTED.equals(state)) {
-        return true;
-    }
-    return false;
-  }
-  
 }

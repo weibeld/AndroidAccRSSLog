@@ -18,4 +18,9 @@ android {
             proguardFile getDefaultProguardFile('proguard-android.txt')
         }
     }
+
+    dependencies {
+      compile fileTree(dir: 'libs', include: '*.jar')
+    }
+
 }

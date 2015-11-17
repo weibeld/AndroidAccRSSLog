@@ -17,20 +17,42 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.FileNotFoundException;
 import java.lang.Exception;
+import java.util.Timer;
+import java.util.TimerTask;
+import org.apache.commons.io.FileUtils;
+import android.telephony.TelephonyManager;
+import android.telephony.PhoneStateListener;
+import android.telephony.SignalStrength;
+//import it.polimi.antlab.fastfading.MyPhoneStateListener;
+
+import android.telephony.CellInfo;
+import android.telephony.CellInfoCdma;
+import android.telephony.CellInfoGsm;
+import android.telephony.CellInfoLte;
+import android.telephony.CellSignalStrengthCdma;
+import android.telephony.CellSignalStrengthGsm;
+import android.telephony.CellSignalStrengthLte;
+import android.telephony.TelephonyManager;
+
+import android.hardware.*;
 
 public class LogService extends Service {
   public static boolean isRunning = false;
+  public static File file;
 
-  final int NOTIFICATION_ID = 1;
   private NotificationManager nm;
 
   @Override
   public int onStartCommand(Intent intent, int flags, int startId) {
     isRunning = true;
-    addNotification();
+
+    MyPhoneStateListener psListener = new MyPhoneStateListener();
+    TelephonyManager telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+    telephonyManager.listen(psListener,PhoneStateListener.LISTEN_SIGNAL_STRENGTHS);
+
     //file = new File(this.getFilesDir(), "test.csv");
     // Start thread executing function logData()
-    final File file = new File(intent.getData().getPath());
+    file = new File(intent.getData().getPath());
     Thread loggerThread = new Thread(new Runnable() {
       public void run() {
         logData(file);
@@ -40,52 +62,61 @@ public class LogService extends Service {
     return Service.START_STICKY;
   }
 
-  private void logData(File file) {
+  class MyPhoneStateListener extends PhoneStateListener {
+
+        @Override
+        public void onSignalStrengthsChanged(SignalStrength signalStrength) {
+            super.onSignalStrengthsChanged(signalStrength);
+            int ss = signalStrength.getGsmSignalStrength();
+            String line = System.currentTimeMillis() + "," + ss + "\n";
+            Util.append(file, line);
+        }
+
+    }
+
+  private void logData(final File file) {
     // Notes on saving files (Nexus 6):
     // External storage: Environment.getExternalStorageDirectory()
     //   --> /storage/emulated/0
     // Internal storage: Context.getFilesDir()
     //   --> /data/user/0/it.polimi.antlab.fastfading/files
     // Save a file in internal storage and send it by email
-    writeToFile(file, "Hello world");
+    //LogService.append(file, "timestamp,acc_x,acc_y,acc_z,rssi");
+    TimerTask task = new TimerTask() {
+      @Override
+      public void run() {
+        int rssi = 0;
+        try {
+          final TelephonyManager tm = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+          for (final CellInfo info : tm.getAllCellInfo()) {
+              if (info instanceof CellInfoGsm) {
+                  final CellSignalStrengthGsm gsm = ((CellInfoGsm) info).getCellSignalStrength();
+                  rssi = gsm.getDbm();
+              } else if (info instanceof CellInfoCdma) {
+                  final CellSignalStrengthCdma cdma = ((CellInfoCdma) info).getCellSignalStrength();
+                  rssi = cdma.getDbm();
+              } else if (info instanceof CellInfoLte) {
+                  final CellSignalStrengthLte lte = ((CellInfoLte) info).getCellSignalStrength();
+                  rssi = lte.getDbm();
+              } else {
+                  throw new Exception("Unknown type of cell signal!");
+              }
+          }
+        }
+        catch (Exception e) {
+          return;
+        }
+        Util.append(file, System.currentTimeMillis() + "," + rssi + "\n");
+      }
+    };
+    Timer timer = new Timer();
+    timer.scheduleAtFixedRate(task, 0, 10);
   }
 
-  private void writeToFile(File file, String text) {
-    FileOutputStream out = null;
-    try {
-      out = new FileOutputStream(file);
-      out.write(text.getBytes());
-      out.close();
-    }
-    catch (Exception e) {
-      return;
-    }
-  }
+  
 
-  /* Setup notification in notification bar when service starts */
-  private void addNotification() {
-    PendingIntent clickPendingIntent = createNotificationIndent();
-    Notification n = new Notification.Builder(this)
-        .setContentTitle("Fast Fading")
-        .setContentText("Collecting data...")
-        .setSmallIcon(R.drawable.notification_icon)
-        .setColor(Color.BLUE)
-        .setOngoing(true)
-        .setContentIntent(clickPendingIntent)
-        .build();
-    nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-    nm.notify(NOTIFICATION_ID, n);
-  }
-  /* Create PendingIntent to be issued when notification is clicked */
-  private PendingIntent createNotificationIndent() {
-    Intent clickIntent = new Intent(this, FastFadingActivity.class);
-    // Use of the TaskStackBuilder makes sure that clicking the "Back" button
-    // in the new activity leads to the home screen (not to another activity)
-    TaskStackBuilder tsb = TaskStackBuilder.create(this);
-    tsb.addParentStack(FastFadingActivity.class);
-    tsb.addNextIntent(clickIntent);
-    return tsb.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
-  }
+
+  
 
   @Override
   public IBinder onBind(Intent intent) {
@@ -94,9 +125,6 @@ public class LogService extends Service {
   
   @Override
   public void onDestroy() {
-    // Remove notification
-    nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-    nm.cancel(NOTIFICATION_ID);
     isRunning = false;
   }
 }
