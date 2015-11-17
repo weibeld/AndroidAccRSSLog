@@ -25,6 +25,9 @@ import android.telephony.PhoneStateListener;
 import android.telephony.SignalStrength;
 //import it.polimi.antlab.fastfading.MyPhoneStateListener;
 import android.util.Log;
+import java.util.List;
+
+import android.telephony.*;
 
 import android.hardware.*;
 
@@ -34,6 +37,7 @@ public class LogService extends Service implements SensorEventListener {
 
   private NotificationManager nm;
   private SensorManager sm;
+  private TelephonyManager tm;
 
   @Override
   public int onStartCommand(Intent intent, int flags, int startId) {
@@ -55,7 +59,7 @@ public class LogService extends Service implements SensorEventListener {
     // Internal storage: Context.getFilesDir()
     //   --> /data/user/0/it.polimi.antlab.fastfading/files
     // Save a file in internal storage and send it by email
-    Util.append(file, "timestamp,acc_x,acc_y,acc_z\n");
+    Util.append(file, "timestamp,timestamp_2,acc_x,acc_y,acc_z,dBm,ASU_level,level\n");
     sm = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
     Sensor acc = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
     Log.i(Util.TAG, "getName(): " + acc.getName());
@@ -83,9 +87,9 @@ public class LogService extends Service implements SensorEventListener {
     // getMinDelay(): 4444     (min. delay between two measurements in microseconds)
     // getMaxDelay(): 1000000  (max. delay between two measurements in microseconds)
     // isWakeUpSensor(): false
-
-
     sm.registerListener(this, acc, 10000);
+
+    tm = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
 
 
     // TimerTask task = new TimerTask() {
@@ -96,6 +100,25 @@ public class LogService extends Service implements SensorEventListener {
     // };
     // Timer timer = new Timer();
     // timer.scheduleAtFixedRate(task, 0, 10);
+
+    // List<CellInfo> allCells = tm.getAllCellInfo();
+    // CellSignalStrength strength = null;
+    // for (CellInfo cell : allCells) {
+    //   if (cell.isRegistered()) {
+    //     if (cell instanceof CellInfoGsm)
+    //       strength = ((CellInfoLte) cell).getCellSignalStrength();
+    //     else if (cell instanceof CellInfoLte)
+    //       strength = ((CellInfoLte) cell).getCellSignalStrength();
+    //     else if (cell instanceof CellInfoCdma)
+    //       strength = ((CellInfoCdma) cell).getCellSignalStrength();
+    //     else if (cell instanceof CellInfoWcdma)
+    //       strength = ((CellInfoWcdma) cell).getCellSignalStrength();
+    //     Log.e(Util.TAG, cell.toString());
+    //     Log.e(Util.TAG, "getDbm(): " + strength.getDbm());
+    //     Log.e(Util.TAG, "getLevel(): " + strength.getLevel());
+    //     Log.e(Util.TAG, "getAsuLevel(): " + strength.getAsuLevel());
+    //   }
+    // }
   }
 
   @Override
@@ -111,7 +134,38 @@ public class LogService extends Service implements SensorEventListener {
       float z = event.values[2];
       // Convert sensor event timestamp to absolute timestamp in milliseconds
       long ts = ((System.currentTimeMillis() * 1000000) - System.nanoTime() + event.timestamp) / 1000000;
-      Util.append(file, ts + "," + x + "," + y + "," + z + "\n");
+
+      List<CellInfo> allCells = tm.getAllCellInfo();
+      CellSignalStrength strength = null;
+      int dbm = 0;
+      int asu = 0;
+      int lev = 0;
+      long ts2 = 0;
+      for (CellInfo cell : allCells) {
+        if (cell.isRegistered()) {
+          if (cell instanceof CellInfoGsm)
+            strength = ((CellInfoLte) cell).getCellSignalStrength();
+          else if (cell instanceof CellInfoLte)
+            strength = ((CellInfoLte) cell).getCellSignalStrength();
+          else if (cell instanceof CellInfoCdma)
+            strength = ((CellInfoCdma) cell).getCellSignalStrength();
+          else if (cell instanceof CellInfoWcdma)
+            strength = ((CellInfoWcdma) cell).getCellSignalStrength();
+          dbm = strength.getDbm();
+          asu = strength.getAsuLevel();
+          lev = strength.getLevel();
+          ts2 = ((System.currentTimeMillis() * 1000000) - System.nanoTime() + cell.getTimeStamp()) / 1000000;
+          break;
+        }
+      }
+
+      Util.append(file, ts + "," + ts2 + "," + x + "," + y + "," + z + "," + dbm + "," + asu + "," + lev + "\n");
+
+      // List<CellInfo> cellInfo = tm.getAllCellInfo();
+      // for (CellInfo e : cellInfo) {
+      //   Log.e(Util.TAG, e.toString());
+      // }
+      // Log.e(Util.TAG, "");
     }
   }
 
