@@ -75,7 +75,7 @@ public class FastFadingActivity extends Activity {
               try { info.setText(FileUtils.readFileToString(csvFile)); }
               catch (Exception e) { Util.dispException(e); }
               File zipFile = Util.createZip(csvFile);
-              Util.sendEmail("daniel.weibel@utilnifr.ch", "Fast Fading File", "Your file", zipFile);
+              Util.sendEmail("daniel.weibel@unifr.ch", "Fast Fading File", "Your file", zipFile);
           }
         }
       }

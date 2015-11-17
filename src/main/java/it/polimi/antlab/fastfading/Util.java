@@ -32,7 +32,10 @@ import android.app.NotificationManager;
 import android.graphics.Color;
 import android.app.TaskStackBuilder;
 
+
 public class Util {
+
+	public static String TAG = "FastFading";
 
 	private final static int NOTIFICATION_ID = 1;
 
