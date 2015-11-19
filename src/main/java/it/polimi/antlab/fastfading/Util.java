@@ -1,48 +1,49 @@
 package it.polimi.antlab.fastfading;
 
-import android.app.Activity;
 import android.content.Intent;
-import android.os.Bundle;
-import android.widget.ToggleButton;
-import android.widget.TextView;
-import android.widget.CompoundButton;
-import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.content.Context;
 import android.os.Environment;
 import java.io.File;
-import android.media.MediaScannerConnection;
 import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.FileNotFoundException;
 import java.lang.Exception;
 import android.net.Uri;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.zip.ZipOutputStream;
 import java.util.zip.ZipEntry;
-import java.io.BufferedOutputStream;
 import java.io.FileInputStream;
-import java.io.BufferedInputStream;
 import android.app.AlertDialog;
 import org.apache.commons.io.FileUtils;
 import android.app.PendingIntent;
-import android.os.IBinder;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.graphics.Color;
 import android.app.TaskStackBuilder;
+import android.util.Log;
+import android.hardware.Sensor;
+import android.telephony.CellInfo;
+import android.telephony.CellInfoGsm;
+import android.telephony.CellInfoLte;
+import android.telephony.CellInfoCdma;
+import android.telephony.CellInfoWcdma;
+import android.telephony.CellSignalStrength;
+import java.util.List;
+import android.telephony.TelephonyManager;
 
 
 public class Util {
-
+  // Tag for log output (used in Log.i(), Log.e(), etc.)
 	public static String TAG = "FastFading";
-
+  // ID for the notification in the notification bar
 	private final static int NOTIFICATION_ID = 1;
 
+  // Return string of current date
 	public static String getDate() {
 		return new SimpleDateFormat("yyyy-MM-dd_HHmmss").format(new Date());
 	}
 
+  // Zip passed file and return Zip file with same name as input file with
+  // extension replaced by .zip
 	public static File createZip(File inFile) {
 	  // Filename strings
 	  String inFilename  = inFile.getAbsolutePath();
@@ -74,15 +75,11 @@ public class Util {
 		return new File(outFilename);
 	}
 
-	public static void dispException(Exception e) {
-		Context context = FastFadingActivity.getContext();
-		AlertDialog.Builder dialog = new AlertDialog.Builder(context);
-		dialog.setTitle("MyException Occured");
-		dialog.setMessage(e.getMessage());
-		dialog.setNeutralButton("Cool", null);
-		dialog.create().show();
-	}
+  public static void handleException(Exception e) {
+    // Handle exception
+  }
 
+  // Open an app chooser for sending an e-mail with a file in the attachment
 	public static void sendEmail(String to, String subject, String text, File file) {
 		Context context = FastFadingActivity.getContext();
 		Intent emailIntent = new Intent();
@@ -97,17 +94,78 @@ public class Util {
 		}
 	}
 
+  public static int getSignalStrength() {
+    Context context = FastFadingActivity.getContext();
+    TelephonyManager tm = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+    List<CellInfo> allCells = tm.getAllCellInfo();
+    CellSignalStrength strength = null;
+    int dbm = 0;
+    for (CellInfo cell : allCells) {
+      if (cell.isRegistered()) {
+        if (cell instanceof CellInfoGsm)
+          strength = ((CellInfoLte) cell).getCellSignalStrength();
+        else if (cell instanceof CellInfoLte)
+          strength = ((CellInfoLte) cell).getCellSignalStrength();
+        else if (cell instanceof CellInfoCdma)
+          strength = ((CellInfoCdma) cell).getCellSignalStrength();
+        else if (cell instanceof CellInfoWcdma)
+          strength = ((CellInfoWcdma) cell).getCellSignalStrength();
+        dbm = strength.getDbm();
+        break;
+      }
+    }
+    return dbm;
+  }
+
+  // Append a string to an existing file
 	public static void append(File file, String text) {
-    try 						    { FileUtils.writeStringToFile(file, text, true); }
-    catch (Exception e) { dispException(e); }
+		// Notes on saving files (Nexus 6):
+    // External storage: Environment.getExternalStorageDirectory()
+    //   --> /storage/emulated/0
+    // Internal storage: Context.getFilesDir()
+    //   --> /data/user/0/it.polimi.antlab.fastfading/files
+    try { FileUtils.writeStringToFile(file, text, true); }
+    catch (Exception e) { handleException(e); }
   }
 
-  public static void cleanDir(File dir) {
-  	try   				      { FileUtils.cleanDirectory(dir);  }
-    catch (Exception e) { Util.dispException(e); }
+  // Delete all files in the specified directory
+  public static String readFile(File file) {
+    String text = null;
+  	try { text = FileUtils.readFileToString(file);  }
+    catch (Exception e) { handleException(e); }
+    return text;
   }
 
-  /* Setup notification in notification bar when service starts */
+  // For debugging: write some information about a sensor to the log
+  public static void logSensorInfo(Sensor s) {
+  	Log.i(TAG, "getName(): " + s.getName());
+    Log.i(TAG, "getType(): " + s.getType());
+    Log.i(TAG, "getStringType(): " + s.getStringType());
+    Log.i(TAG, "getReportingMode(): " + s.getReportingMode());
+    Log.i(TAG, "getResolution(): " + s.getResolution());
+    Log.i(TAG, "getMaximumRange(): " + s.getMaximumRange());
+    Log.i(TAG, "getPower(): " + s.getPower());
+    Log.i(TAG, "getVendor(): " + s.getVendor());
+    Log.i(TAG, "getVersion(): " + s.getVersion());
+    Log.i(TAG, "getMinDelay(): " + s.getMinDelay());
+    Log.i(TAG, "getMaxDelay(): " + s.getMaxDelay());
+    Log.i(TAG, "isWakeUpSensor(): " + s.isWakeUpSensor());
+    // Results for accelerometer of Nexus 6:
+    // getName(): Invensense Accelerometer
+    // getType(): 1
+    // getStringType(): android.sensor.accelerometer
+    // getReportingMode(): 0 (REPORTING_MODE_CONTINUOUS)
+    // getResolution(): 0.07846069
+    // getMaximumRange(): 39.22661
+    // getPower(): 0.3
+    // getVendor(): Invensense Inc.
+    // getVersion(): 4
+    // getMinDelay(): 4444     (min. delay between two measurements in microseconds)
+    // getMaxDelay(): 1000000  (max. delay between two measurements in microseconds)
+    // isWakeUpSensor(): false
+  }
+
+  // Setup notification signalising that data collection is running
   public static void startNotification() {
   	Context context = FastFadingActivity.getContext();
     PendingIntent clickPendingIntent = Util.createNotificationIntent();
@@ -121,10 +179,10 @@ public class Util {
         .build();
     NotificationManager nm = (NotificationManager)
     	context.getSystemService(Context.NOTIFICATION_SERVICE);
-    nm.notify(Util.NOTIFICATION_ID, n);
+    nm.notify(NOTIFICATION_ID, n);
   }
 
-  /* Create PendingIntent to be issued when notification is clicked */
+  // Helper function of startNotification(). Intent when notification is clicked
   private static PendingIntent createNotificationIntent() {
   	Context context = FastFadingActivity.getContext();
     Intent clickIntent = new Intent(context, FastFadingActivity.class);
@@ -136,13 +194,15 @@ public class Util {
     return tsb.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
   }
 
+  // Remove notification from notification bar
   public static void cancelNotification() {
   	Context context = FastFadingActivity.getContext();
   	NotificationManager nm = (NotificationManager)
   		context.getSystemService(Context.NOTIFICATION_SERVICE);
-    nm.cancel(Util.NOTIFICATION_ID);
+    nm.cancel(NOTIFICATION_ID);
   }
 
+  // Test if external storage is writable (should be always the case)
 	public boolean isExternalStorageWritable() {
 		String state = Environment.getExternalStorageState();
 		if (Environment.MEDIA_MOUNTED.equals(state)) {
