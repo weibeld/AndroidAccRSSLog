@@ -22,7 +22,8 @@ public class FastFadingActivity extends Activity {
   private static Context context;
 
   private ToggleButton toggle;
-  private TextView info;
+  public  TextView infoView;
+  private TextView fileView;
   private TelephonyManager tm;
 
   /* Called when app is first started, and when user clicks on notification
@@ -32,20 +33,22 @@ public class FastFadingActivity extends Activity {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.main);
     // Fields
-    context = this;
-    toggle  = (ToggleButton) findViewById(R.id.toggle);
-    info    = (TextView)     findViewById(R.id.info);
+    context  = this;
+    toggle   = (ToggleButton) findViewById(R.id.toggle);
+    infoView = (TextView) findViewById(R.id.info);
+    fileView = (TextView) findViewById(R.id.file);
     // Set up toggling actions of toggle button
     toggle.setChecked(LogService.isRunning());
     toggle.setOnCheckedChangeListener(new MyToggleListener());
-
-    
+    if (LogService.isRunning())
+      infoView.setText(LogService.getCurrentSignalStrength().getDbm() + " dBm");
+    else infoView.setText("---- dBm");
   }
 
   @Override
   public void onStop() {
     super.onStop();
-    info.setText("");
+    fileView.setText("");
   }
 
   public static Context getContext() {
@@ -73,7 +76,8 @@ public class FastFadingActivity extends Activity {
           Intent i = new Intent(FastFadingActivity.getContext(), LogService.class);
           stopService(i);
           File csvFile = MyCsvFile.getInstance();
-          info.setText(Util.truncate(Util.readFile(csvFile), 16384));
+          infoView.setText("---- dBm");
+          fileView.setText(Util.truncate(Util.readFile(csvFile), 16384));
           File zipFile = Util.createZip(csvFile);
           Util.sendEmail("daniel.weibel@unifr.ch", "Fast Fading File", "Your file", zipFile);
         }
@@ -98,8 +102,10 @@ public class FastFadingActivity extends Activity {
   class MySignalStrengthListener extends PhoneStateListener {
     @Override
     public void onSignalStrengthsChanged(SignalStrength signalStrength) {
-      LogService.setCurrentSignalStrength(Util.getSignalStrength());
-      //Log.e(Util.TAG, "Signal stength listener: new signal strength " + Util.getSignalStrength());
+      MySignalStrength currentSignalStrength = Util.getSignalStrength();
+      LogService.setCurrentSignalStrength(currentSignalStrength);
+      //infoView.setText(currentSignalStrength.getDbm() + " dBm");
+      Log.e(Util.TAG, "Signal stength listener: new signal strength " + currentSignalStrength.getDbm());
     }
   }
 

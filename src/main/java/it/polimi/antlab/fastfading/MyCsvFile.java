@@ -14,7 +14,7 @@ public class MyCsvFile {
 		deleteInstance();
 		Context context = FastFadingActivity.getContext();
 		File dir        = context.getExternalCacheDir();
-		String filename = "FastFading_" + Util.getDate() + ".csv";
+		String filename = Util.getDate() + ".csv";
     instance = new File(dir, filename);
 	}
 

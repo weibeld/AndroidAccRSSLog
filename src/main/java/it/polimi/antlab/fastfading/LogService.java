@@ -91,6 +91,10 @@ public class LogService extends Service implements SensorEventListener {
     return isRunning;
   }
   public static void setCurrentSignalStrength(MySignalStrength strength) {
+    ((FastFadingActivity) FastFadingActivity.getContext()).infoView.setText(strength.getDbm() + " dBm");
     currentSignalStrength = strength;
+  }
+  public static MySignalStrength getCurrentSignalStrength() {
+    return currentSignalStrength;
   }
 }
