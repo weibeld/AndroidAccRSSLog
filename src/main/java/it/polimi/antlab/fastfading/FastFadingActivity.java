@@ -73,7 +73,7 @@ public class FastFadingActivity extends Activity {
           Intent i = new Intent(FastFadingActivity.getContext(), LogService.class);
           stopService(i);
           File csvFile = MyCsvFile.getInstance();
-          info.setText(Util.readFile(csvFile));
+          info.setText(Util.truncate(Util.readFile(csvFile), 16384));
           File zipFile = Util.createZip(csvFile);
           Util.sendEmail("daniel.weibel@unifr.ch", "Fast Fading File", "Your file", zipFile);
         }

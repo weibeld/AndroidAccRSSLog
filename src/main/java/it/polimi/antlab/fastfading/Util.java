@@ -94,27 +94,37 @@ public class Util {
 		}
 	}
 
-  public static int getSignalStrength() {
+  public static MySignalStrength getSignalStrength() {
     Context context = FastFadingActivity.getContext();
     TelephonyManager tm = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
     List<CellInfo> allCells = tm.getAllCellInfo();
-    CellSignalStrength strength = null;
-    int dbm = 0;
+    MySignalStrength result = new MySignalStrength();
     for (CellInfo cell : allCells) {
       if (cell.isRegistered()) {
-        if (cell instanceof CellInfoGsm)
-          strength = ((CellInfoLte) cell).getCellSignalStrength();
-        else if (cell instanceof CellInfoLte)
-          strength = ((CellInfoLte) cell).getCellSignalStrength();
-        else if (cell instanceof CellInfoCdma)
-          strength = ((CellInfoCdma) cell).getCellSignalStrength();
-        else if (cell instanceof CellInfoWcdma)
-          strength = ((CellInfoWcdma) cell).getCellSignalStrength();
-        dbm = strength.getDbm();
+        if (cell instanceof CellInfoGsm) {
+          result.setType("gsm");
+          result.setDbm(((CellInfoGsm) cell).getCellSignalStrength().getDbm());
+        }
+        else if (cell instanceof CellInfoLte) {
+          result.setType("lte");
+          result.setDbm(((CellInfoLte) cell).getCellSignalStrength().getDbm());
+        }
+        else if (cell instanceof CellInfoCdma) {
+          result.setType("cdma");
+          result.setDbm(((CellInfoCdma) cell).getCellSignalStrength().getDbm());
+        }
+        else if (cell instanceof CellInfoWcdma) {
+          result.setType("wcdma");
+          result.setDbm(((CellInfoWcdma) cell).getCellSignalStrength().getDbm());
+        }
+        else {
+          result.setType("unknown");
+          result.setDbm(0);
+        }
         break;
       }
     }
-    return dbm;
+    return result;
   }
 
   // Append a string to an existing file
@@ -128,12 +138,21 @@ public class Util {
     catch (Exception e) { handleException(e); }
   }
 
-  // Delete all files in the specified directory
+  // Read content of a file to a string
   public static String readFile(File file) {
     String text = null;
   	try { text = FileUtils.readFileToString(file);  }
     catch (Exception e) { handleException(e); }
     return text;
+  }
+
+  // Truncate string to a specified number of bytes (characters)
+  public static String truncate(String string, int bytes) {
+    int length = string.length();
+    if (length <= bytes)
+      return string;
+    else
+      return string.substring(0, bytes) + "\n... (" + (length - bytes) + " bytes more)";
   }
 
   // For debugging: write some information about a sensor to the log

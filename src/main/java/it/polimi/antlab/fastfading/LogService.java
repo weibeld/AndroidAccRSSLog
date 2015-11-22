@@ -24,7 +24,7 @@ public class LogService extends Service implements SensorEventListener {
   // For application-wide querying whether service is running
   private static boolean isRunning = false;
   // Communication of signal strength to service by MySignalStrengthListener
-  private static int     currentSignalStrength;
+  private static MySignalStrength currentSignalStrength;
   // Fields
   private File                file;
   private SensorManager       sm;
@@ -40,21 +40,13 @@ public class LogService extends Service implements SensorEventListener {
     sm = (SensorManager)    getSystemService(Context.SENSOR_SERVICE);
     tm = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
 
-    // Start separate thread doing the actual work
-    //Thread loggerThread = new Thread(new Runnable() {
-    //  public void run() {
-        // Write CSV header to data file
-        Util.append(file, "ts,acc_x,acc_y,acc_z,dbm\n");
+    // Write CSV header to data file
+    Util.append(file, "ts,acc_x,acc_y,acc_z,dbm,type\n");
 
-        // Set up accelerometer handler to be called every 10 milliseconds
-        Sensor acc = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        sm.registerListener(this, acc, 10000);  // Microseconds
+    // Set up accelerometer handler to be called every 10 milliseconds
+    Sensor acc = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+    sm.registerListener(this, acc, 10000);  // Microseconds
 
-        // Note: signal strength listener has been set up in FastFadingActivity,
-        // because this cannot be done from a service (bug in Android?)
-      //}
-    //});
-    //loggerThread.start();
     return Service.START_STICKY;
   }
 
@@ -73,7 +65,7 @@ public class LogService extends Service implements SensorEventListener {
       long ts = event.timestamp / 1000000;  // event.timestamp is in nanoseconds
 
       // Write CSV line
-      Util.append(file, ts + "," + x + "," + y + "," + z + "," + currentSignalStrength + "\n");
+      Util.append(file, ts + "," + x + "," + y + "," + z + "," + currentSignalStrength.getDbm() + "," + currentSignalStrength.getType() + "\n");
     }
   }
 
@@ -98,7 +90,7 @@ public class LogService extends Service implements SensorEventListener {
   public static boolean isRunning() {
     return isRunning;
   }
-  public static void setCurrentSignalStrength(int dbm) {
-    currentSignalStrength = dbm;
+  public static void setCurrentSignalStrength(MySignalStrength strength) {
+    currentSignalStrength = strength;
   }
 }
