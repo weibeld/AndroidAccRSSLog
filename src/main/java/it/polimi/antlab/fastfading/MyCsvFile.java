@@ -4,7 +4,7 @@ import java.io.File;
 import android.content.Context;
 
 /* Single instance of the CSV file that the current data recording session is
- * writing to. */
+ * writing to. Used only by FastFadingActivity. */
 public class MyCsvFile {
 	private static File instance = null;
 

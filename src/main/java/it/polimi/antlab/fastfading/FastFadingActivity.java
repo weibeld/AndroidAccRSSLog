@@ -21,8 +21,9 @@ public class FastFadingActivity extends Activity {
 
   private static Context context;
 
-  ToggleButton toggle;
-  TextView info;
+  private ToggleButton toggle;
+  private TextView info;
+  private TelephonyManager tm;
 
   /* Called when app is first started, and when user clicks on notification
    * (in which case LogService is running). */
@@ -35,7 +36,7 @@ public class FastFadingActivity extends Activity {
     toggle  = (ToggleButton) findViewById(R.id.toggle);
     info    = (TextView)     findViewById(R.id.info);
     // Set up toggling actions of toggle button
-    toggle.setChecked(LogService.isRunning);
+    toggle.setChecked(LogService.isRunning());
     toggle.setOnCheckedChangeListener(new MyToggleListener());
 
     
@@ -51,28 +52,24 @@ public class FastFadingActivity extends Activity {
     return context;
   }
 
-  public class MyToggleListener implements OnCheckedChangeListener {
+  class MyToggleListener implements OnCheckedChangeListener {
     @Override
     public void onCheckedChanged(CompoundButton button, boolean isChecked) {
       // Toggle button OFF ==> ON
       if (isChecked) {
         MyCsvFile.createNewInstance();  // File to write to
+        // Intent for starting service
         Intent i = new Intent(FastFadingActivity.getContext(), LogService.class);
         i.setData(Uri.fromFile(MyCsvFile.getInstance()));
-        //TelephonyManager tm = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
-        //tm.listen(new LogService.MySignalStrengthListener(), PhoneStateListener.LISTEN_SIGNAL_STRENGTHS);
         startService(i);
-        TelephonyManager tm = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
-        Shelf.ssListener = new MySignalStrengthListener();
-        tm.listen(Shelf.ssListener, PhoneStateListener.LISTEN_SIGNAL_STRENGTHS);
+        startListeningSignalStrength();
         Util.startNotification();
       }
       // Toggle button ON ==> OFF
       else {
-        if (LogService.isRunning) {
+        if (LogService.isRunning()) {
           Util.cancelNotification();
-          TelephonyManager tm = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
-          tm.listen(Shelf.ssListener, PhoneStateListener.LISTEN_NONE);
+          stopListeningSignalStrength();
           Intent i = new Intent(FastFadingActivity.getContext(), LogService.class);
           stopService(i);
           File csvFile = MyCsvFile.getInstance();
@@ -82,5 +79,39 @@ public class FastFadingActivity extends Activity {
         }
       }
     }
+
+    /* Register listener for listening to signal strength changes. We do this in
+     * the activity, because it is not possible in a service. */
+    private void startListeningSignalStrength() {
+      MySignalStrengthListener listener = new MySignalStrengthListener();
+      Persist.setSignalStrengthListener(listener);
+      TelephonyManager tm = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+      tm.listen(listener, PhoneStateListener.LISTEN_SIGNAL_STRENGTHS);
+    }
+
+    private void stopListeningSignalStrength() {
+      TelephonyManager tm = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+      tm.listen(Persist.getSignalStrengthListener(), PhoneStateListener.LISTEN_NONE);
+    }
+  }
+
+  class MySignalStrengthListener extends PhoneStateListener {
+    @Override
+    public void onSignalStrengthsChanged(SignalStrength signalStrength) {
+      LogService.setCurrentSignalStrength(Util.getSignalStrength());
+      //Log.e(Util.TAG, "Signal stength listener: new signal strength " + Util.getSignalStrength());
+    }
+  }
+
+  static class Persist {
+    private static MySignalStrengthListener ss;
+    public static void setSignalStrengthListener(MySignalStrengthListener listener) {
+      ss = listener;
+    }
+    public static MySignalStrengthListener getSignalStrengthListener() {
+      return ss;
+    }
+
+
   }
 }
